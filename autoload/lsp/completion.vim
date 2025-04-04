@@ -494,14 +494,6 @@ def g:LspOmniFunc(findstart: number, base: string): any
   endif
 
   if findstart
-
-    var [triggerKind, triggerChar] = GetTriggerAttributes(lspserver)
-    if triggerKind < 0
-      # previous character is not a keyword character or a trigger character,
-      # so cancel omni completion.
-      return -2
-    endif
-
     # first send all the changes in the current buffer to the LSP server
     listener_flush()
 
@@ -509,7 +501,7 @@ def g:LspOmniFunc(findstart: number, base: string): any
     lspserver.completeItems = []
 
     # initiate a request to LSP server to get list of completions
-    lspserver.getCompletion(triggerKind, triggerChar)
+    lspserver.getCompletion(1, '')
 
     # locate the start of the word
     var line = getline('.')->strpart(0, col('.') - 1)
