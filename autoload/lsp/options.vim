@@ -87,8 +87,48 @@ export var lspOptions: dict<any> = {
   # Outline window size
   outlineWinSize: 20,
 
+  popupBorder: false,
+
+  popupBorderChars: ['─', '│', '─', '│', '╭', '╮', '╯', '╰'],
+
+  popupBorderHighlight: 'LspPopupBorder',
+
+  popupHighlight: 'LspPopup',
+
+  # Optional overrideable popup options:
+  # popupBorderCodeAction
+  # popupBorderHighlightCodeAction
+  # popupHighlightCodeAction
+  # popupBorderCompletion
+  # popupBorderHighlightCompletion
+  # popupHighlightCompletion
+  # popupBorderDiag
+  # popupBorderHighlightDiag
+  # popupHighlightDiag
+  # popupBorderHover
+  # popupBorderHighlightHover
+  # popupHighlightHover
+  # popupBorderPeek
+  # popupBorderHighlightPeek
+  # popupHighlightPeek
+  # popupBorderSignatureHelp
+  # popupBorderHighlightSignatureHelp
+  # popupHighlightSignatureHelp
+  # popupBorderSymbolMenu
+  # popupBorderHighlightSymbolMenu
+  # popupHighlightSymbolMenu
+  # popupBorderSymbolMenuInput
+  # popupBorderHighlightSymbolMenuInput
+  # popupHighlightSymbolMenuInput
+  # popupBorderTypeHierarchy
+  # popupBorderHighlightTypeHierarchy
+  # popupHighlightTypeHierarchy
+
   # Enable semantic highlighting
   semanticHighlight: false,
+
+  # Delay in milliseconds for semantic highlighting requests
+  semanticHighlightDelay: 1000,
 
   # Show diagnostic text in a balloon when the mouse is over the diagnostic
   showDiagInBalloon: true,
@@ -146,6 +186,9 @@ export var lspOptions: dict<any> = {
 
   # Condenses the completion menu items to single (key-)words (plus kind)
   condensedCompletionMenu: false,
+
+  # Ignore >ItemsIsIncomplete< messages from misbehaving servers:
+  ignoreCompleteItemsIsIncomplete: [],
 }
 
 # set the LSP plugin options from the user provided option values
@@ -177,6 +220,26 @@ enddef
 # return a copy of the LSP plugin options
 export def OptionsGet(): dict<any>
   return lspOptions->deepcopy()
+enddef
+
+def PopupOptionGet(type: string, optionName: string): any
+  return get(lspOptions,
+    optionName .. type,           # e.g. popupHighlightHover
+    get(lspOptions, optionName))  # e.g. popupHighlight
+enddef
+
+# Set generic configurable popup options. These may be overridden by popup type
+# if users have configured those options, e.g. popupHighlightHover will be used
+# as the highlight group for "Hover" type popups if configured, otherwise hover
+# popups will fall back to the standard popupHighlight option.
+export def PopupConfigure(type: string, popupAttrs: dict<any>): dict<any>
+  popupAttrs.highlight = PopupOptionGet(type, 'popupHighlight')
+  if PopupOptionGet(type, 'popupBorder')
+    popupAttrs.border = []
+    popupAttrs.borderchars = lspOptions.popupBorderChars
+    popupAttrs.borderhighlight = [PopupOptionGet(type, 'popupBorderHighlight')]
+  endif
+  return popupAttrs
 enddef
 
 # vim: tabstop=8 shiftwidth=2 softtabstop=2

@@ -161,7 +161,11 @@ export def CompletionReply(lspserver: dict<any>, cItems: any)
     items = cItems
   else
     items = cItems.items
-    lspserver.completeItemsIsIncomplete = cItems->get('isIncomplete', false)
+    if opt.lspOptions.ignoreCompleteItemsIsIncomplete->index(lspserver.name) >= 0
+      lspserver.completeItemsIsIncomplete = v:false
+    else
+      lspserver.completeItemsIsIncomplete = cItems->get('isIncomplete', false)
+    endif
   endif
 
   var lspOpts = opt.lspOptions
@@ -441,6 +445,7 @@ def ShowCompletionDocumentation(cItem: any)
     var bufnr = id->winbufnr()
     id->popup_settext(infoText)
     infoKind->setbufvar(bufnr, '&ft')
+    id->popup_setoptions(opt.PopupConfigure('Completion', {}))
     id->popup_show()
   else
     # &omnifunc with &completeopt =~ 'preview'
@@ -526,9 +531,14 @@ def g:LspOmniFunc(findstart: number, base: string): any
     var res: list<dict<any>> = lspserver.completeItems
     var prefix = lspserver.omniCompleteKeyword
 
-    # Don't attempt to filter on the items, when "isIncomplete" is set
-    if prefix->empty() || lspserver.completeItemsIsIncomplete
+    if prefix->empty()
       return res
+    endif
+
+    # When "isIncomplete" is set, do not filter the items, and signal that Vim
+    # should request more items when user continues typing.
+    if lspserver.completeItemsIsIncomplete
+      return { words: res, refresh: 'always' }
     endif
 
     var lspOpts = opt.lspOptions
@@ -587,6 +597,15 @@ def LspResolve()
 	ShowCompletionDocumentation(item.user_data)
       endif
   endif
+enddef
+
+# Configure the non-lazy documentation popup
+def LspCompleteConfigurePopup()
+  var id = popup_findinfo()
+  if id == 0
+    return
+  endif
+  id->popup_setoptions(opt.PopupConfigure('Completion', {}))
 enddef
 
 # If the completion popup documentation window displays "markdown" content,
@@ -692,6 +711,13 @@ export def BufferInit(lspserver: dict<any>, bnr: number, ftype: string)
                 event: 'CompleteChanged',
                 group: 'LSPBufferAutocmds',
                 cmd: 'LspResolve()'})
+  else
+    # The documentation popup content is provided already but we still need to
+    # style the popup
+    acmds->add({bufnr: bnr,
+                event: 'CompleteChanged',
+                group: 'LSPBufferAutocmds',
+                cmd: 'LspCompleteConfigurePopup()'})
   endif
 
   acmds->add({bufnr: bnr,
